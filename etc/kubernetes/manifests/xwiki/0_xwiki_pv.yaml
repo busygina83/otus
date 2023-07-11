@@ -1,0 +1,130 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: xwiki-pv
+  labels:
+    type: local
+spec:
+  capacity:
+    storage: 50Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/nfs/cluster/xwiki"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: xwiki-pvc
+  namespace: xwiki
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: xpostgres-pv
+  labels:
+    type: local
+spec:
+  capacity:
+    storage: 50Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/nfs/cluster/xpostgres"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: xpostgres-pvc
+  namespace: xwiki
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: xbackup-pv
+  labels:
+    type: local
+spec:
+  capacity:
+    storage: 200Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/nfs/cluster/xbackup"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: xbackup-pvc
+  namespace: xwiki
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 200Gi
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: xpgbackup-pv
+  labels:
+    type: local
+spec:
+  capacity:
+    storage: 200Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/nfs/cluster/xpgbackup"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: xpgbackup-pvc
+  namespace: xwiki
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 200Gi
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: xpgadmin-pv
+  labels:
+    type: local
+spec:
+  capacity:
+    storage: 2Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/nfs/cluster/xpgadmin"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: xpgadmin-pvc
+  namespace: xwiki
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+

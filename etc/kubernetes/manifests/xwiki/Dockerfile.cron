@@ -1,0 +1,7 @@
+FROM ubuntu:22.04
+COPY ./cron_start.sh /home/
+COPY ./cron_restore.sh /home/
+ARG DEBIAN_FRONTEND=noninteractive
+RUN ["/bin/bash", "-c", "chmod 777 /home/cron_start.sh && chmod 777 /home/cron_restore.sh"]
+RUN ["/bin/bash", "-c", "apt update && apt install -y cron mc vim net-tools postgresql"]
+CMD /home/cron_start.sh > /var/log/cron_start.log && tail -f /var/log/cron_start.log

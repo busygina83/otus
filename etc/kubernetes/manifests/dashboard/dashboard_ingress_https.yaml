@@ -1,0 +1,39 @@
+#apiVersion: networking.k8s.io/v1
+#kind: Ingress
+#metadata:
+#  name: dashboard
+#  namespace: kubernetes-dashboard
+#spec:
+#  ingressClassName: nginx
+#  rules:
+#    - host: dashboard.ruby.local
+#      http:
+#        paths:
+#          - path: /
+#            pathType: Prefix
+#            backend:
+#              service:
+#                name: kubernetes-dashboard
+#                port:
+#                  number: 443
+#---
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: kubernetes-dashboard
+  namespace: kubernetes-dashboard
+spec:
+  entryPoints:
+    - websecure
+    - web
+  routes:
+    - kind: Rule
+      match: Host(\`dashboard.ruby.local\`)
+      services:
+        - kind: Service
+          port: 443
+          name: kubernetes-dashboard
+          namespace: kubernetes-dashboard
+  tls:
+    #secretName: ruby-local-cert-secret
+    secretName: kubernetes-dashboard-certs

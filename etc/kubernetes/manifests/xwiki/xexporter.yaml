@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: xwiki
+  name: xexporter
+  namespace: xwiki
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: xwiki
+  template:
+    metadata:
+      labels:
+        app: xwiki
+    spec:
+      containers:
+        - name: xexporter-container
+          image: bitnami/postgres-exporter:0.13.1
+          ports:
+            - containerPort: 9187
+              name: http-xpostgres
+              protocol: TCP
+          env:
+            - name: TZ
+              value: "Europe/Moscow"
+            - name: DATA_SOURCE_URI
+              value: "xpostgres.xwiki.svc:5432/wikidb?sslmode=disable"
+            - name: DATA_SOURCE_USER
+              value: "..."
+            - name: DATA_SOURCE_PASS
+              value: "..."
+            - name: PG_EXPORTER_EXTEND_QUERY_PATH
+              value: "/etc/postgres_exporter/queries.yaml"
+            - name: POSTGRES_EXPORTER_OPTS
+              value: "--config.file=/etc/postgres_exporter/postgres_exporter.yml --web.listen-address=:9187"
+          volumeMounts:
+            - mountPath: /etc/postgres_exporter
+              name: xbackup-pv
+          resources:
+            requests:
+              cpu: 256m
+              memory: 512Mi
+            limits:
+              cpu: 256m
+              memory: 512Mi
+      volumes:
+        - name: xbackup-pv
+          persistentVolumeClaim:
+            claimName: xbackup-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: xexporter
+  namespace: xwiki
+spec:
+  ports:
+    - port: 9187
+      protocol: TCP
+      targetPort: 9187
+  selector:
+    app: xwiki
+  sessionAffinity: None
+  type: ClusterIP

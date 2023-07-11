@@ -1,0 +1,146 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: xwiki
+  name: xpostgres
+  namespace: xwiki
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: xwiki
+  template:
+    metadata:
+      labels:
+        app: xwiki
+    spec:
+      containers:
+        - name: xpostgres-container
+          image: postgres:15.3
+          ports:
+            - containerPort: 5432
+              name: http-xpostgres
+              protocol: TCP
+          command:
+            - "docker-entrypoint.sh"
+            - "-c"
+            - "max_connections=500"
+            - "-c"
+            - "shared_buffers=1GB"
+            - "-c"
+            - "effective_cache_size=4GB"
+            - "-c"
+            - "work_mem=16MB"
+            - "-c"
+            - "maintenance_work_mem=512MB"
+            - "-c"
+            - "random_page_cost=1.1"
+            - "-c"
+            - "temp_file_limit=10GB"
+            - "-c"
+            - "log_min_duration_statement=200ms"
+            - "-c"
+            - "idle_in_transaction_session_timeout=10s"
+            - "-c"
+            - "lock_timeout=1s"
+            - "-c"
+            - "statement_timeout=60s"
+            - "-c"
+            - "shared_preload_libraries=pg_stat_statements"
+            - "-c"
+            - "pg_stat_statements.max=10000"
+            - "-c"
+            - "pg_stat_statements.track=all"
+          env:
+            - name: TZ
+              value: "Europe/Moscow"
+            - name: POSTGRES_DB
+              value: "..."
+            - name: POSTGRES_USER
+              value: "..."
+            - name: POSTGRES_PASSWORD
+              value: "..."
+            - name: POSTGRES_ROOT
+              value: "..."
+            - name: POSTGRES_ROOT_PASSWORD
+              value: "..."
+            - name: PGDATA
+              value: "/var/lib/postgresql/data/pgdata"
+            - name: POSTGRES_INITDB_ARGS
+              value: "--auth=md5 --encoding=UTF8"
+          volumeMounts:
+            - mountPath: /var/lib/postgresql/data
+              name: xpostgres-pv
+              readOnly: false
+            - mountPath: /var/lib/postgresql/backup
+              name: xbackup-pv
+              readOnly: false
+          readinessProbe:
+            exec:
+              command:
+                - /bin/bash
+                - -c
+                - exec /usr/bin/pg_isready -U postgres -d wikidb -h localhost -p 5432
+            failureThreshold: 3
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            successThreshold: 2
+            timeoutSeconds: 5
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            tcpSocket:
+              port: 5432
+            timeoutSeconds: 1
+          resources:
+            requests:
+              cpu: 2
+              memory: 4Gi
+            limits:
+              cpu: 2
+              memory: 4Gi
+      volumes:
+        - name: xpostgres-pv
+          persistentVolumeClaim:
+            claimName: xpostgres-pvc
+        - name: xbackup-pv
+          persistentVolumeClaim:
+            claimName: xbackup-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: xpostgres
+  namespace: xwiki
+spec:
+  ports:
+    - port: 5432
+      protocol: TCP
+      targetPort: 5432
+  selector:
+    app: xwiki
+  sessionAffinity: None
+  type: ClusterIP
+#---
+#apiVersion: networking.k8s.io/v1
+#kind: Ingress
+#metadata:
+#  name: xpostgres
+#  namespace: xwiki
+#spec:
+#  ingressClassName: nginx
+#  rules:
+#    - host: xpostgres.ruby.local
+#      http:
+#        paths:
+#          - path: /
+#            pathType: Prefix
+#            backend:
+#              service:
+#                name: xpostgres
+#                port:
+#                  number: 5432
+

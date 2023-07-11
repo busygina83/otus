@@ -1,0 +1,102 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: xwiki
+  name: xpgadmin
+  namespace: xwiki
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: xwiki
+  template:
+    metadata:
+      labels:
+        app: xwiki
+    spec:
+      containers:
+        - name: xpgadmin-container
+          image: dpage/pgadmin4:7.4
+          ports:
+            - containerPort: 80
+              name: http-xpgadmin
+              protocol: TCP
+          env:
+            - name: TZ
+              value: "Europe/Moscow"
+            - name: PGADMIN_DEFAULT_EMAIL
+              value: "..."
+            - name: PGADMIN_DEFAULT_PASSWORD
+              value: "..."
+            - name: PGADMIN_CONFIG_SERVER_MODE
+              value: "False"
+          volumeMounts:
+            - mountPath: /var/lib/pgadmin
+            #- mountPath: /home/pgadmin
+              name: xpgadmin-pv
+              readOnly: false
+          #readinessProbe:
+          #  httpGet:
+          #    path: /
+          #    port: 5050
+          #    scheme: HTTP
+          #  failureThreshold: 3
+          #  initialDelaySeconds: 10
+          #  periodSeconds: 30
+          #  successThreshold: 2
+          #  timeoutSeconds: 5
+          #livenessProbe:
+          #  failureThreshold: 3
+          #  initialDelaySeconds: 30
+          #  periodSeconds: 10
+          #  successThreshold: 1
+          #  tcpSocket:
+          #    port: 5050
+          #  timeoutSeconds: 1
+          resources:
+            requests:
+              cpu: 1500m
+              memory: 3Gi
+            limits:
+              cpu: 1500m
+              memory: 3Gi
+      volumes:
+        - name: xpgadmin-pv
+          persistentVolumeClaim:
+            claimName: xpgadmin-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: xpgadmin
+  namespace: xwiki
+spec:
+  ports:
+    - port: 80
+      protocol: TCP
+      targetPort: 80
+      #targetPort: http-xpgadmin
+  selector:
+    app: xwiki
+  sessionAffinity: None
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: xpgadmin
+  namespace: xwiki
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: pgadmin.ruby.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: xpgadmin 
+                port:
+                  number: 80

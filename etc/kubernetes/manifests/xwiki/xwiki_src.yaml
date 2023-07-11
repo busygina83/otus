@@ -1,0 +1,310 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: xwiki
+  name: xwiki
+  namespace: xwiki
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: xwiki
+  template:
+    metadata:
+      labels:
+        app: xwiki
+    spec:
+      containers:
+        - name: xwiki-container
+          image: xwiki:15.5-postgres-tomcat
+          ports:
+            - containerPort: 8080
+              name: http-xwiki
+              protocol: TCP
+          env:
+            - name: TZ
+              value: "Europe/Moscow"
+            - name: DB_USER
+              value: "..."
+            - name: DB_PASSWORD
+              value: "..."
+            - name: DB_DATABASE
+              value: "..."
+            - name: DB_HOST
+              value: "..."
+          volumeMounts:
+            - mountPath: /usr/local/xwiki
+              name: xwiki-pv
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+              scheme: HTTP
+            failureThreshold: 3
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            successThreshold: 2
+            timeoutSeconds: 5
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            tcpSocket:
+              port: 8080
+            timeoutSeconds: 1
+          resources:
+            requests:
+              cpu: 1
+              memory: 2Gi
+            limits:
+              cpu: 1
+              memory: 2Gi
+        
+        - name: xpostgres-container
+          #securityContext:
+          #  fsGroup: postgres
+          #  runAsUser: postgres
+          image: postgres:15.3
+          ports:
+            - containerPort: 5432
+              name: http-xpostgres
+              protocol: TCP
+          command:
+            #- "postgres"
+            #- "-w"
+            #-  "postgres"
+            #- "-U"
+            #- "postgres"
+            #-  "-d"
+            #- "postgres"
+            - "docker-entrypoint.sh"
+            #- "-c"
+            #- "listen_addresses='*'"
+            - "-c"
+            - "max_connections=500"
+            - "-c"
+            - "shared_buffers=1GB"
+            - "-c"
+            - "effective_cache_size=4GB"
+            - "-c"
+            - "work_mem=16MB"
+            - "-c"
+            - "maintenance_work_mem=512MB"
+            #- "-c"
+            #- "checkpoint_completion_target =  0.9"
+            - "-c"
+            - "random_page_cost=1.1"
+            - "-c"
+            - "temp_file_limit=10GB"
+            - "-c"
+            - "log_min_duration_statement=200ms"
+            - "-c"
+            - "idle_in_transaction_session_timeout=10s"
+            - "-c"
+            - "lock_timeout=1s"
+            - "-c"
+            - "statement_timeout=60s"
+            - "-c"
+            - "shared_preload_libraries=pg_stat_statements"
+            - "-c"
+            - "pg_stat_statements.max=10000"
+            - "-c"
+            - "pg_stat_statements.track=all"
+          env:
+            - name: TZ
+              value: "Europe/Moscow"
+            - name: POSTGRES_DB
+              value: "..."
+            - name: POSTGRES_USER
+              value: "..."
+            - name: POSTGRES_PASSWORD
+              value: "..."
+            - name: POSTGRES_ROOT
+              value: "..."
+            - name: POSTGRES_ROOT_PASSWORD
+              value: "..."
+            - name: PGDATA
+              value: "/var/lib/postgresql/data/pgdata"
+            - name: POSTGRES_INITDB_ARGS
+              value: "--auth=md5 --encoding=UTF8"
+          volumeMounts:
+            - mountPath: /var/lib/postgresql/data
+              name: xpostgres-pv
+            - mountPath: /var/lib/postgresql/backup
+              name: xbackup-pv
+          readinessProbe:
+            exec:
+              command:
+                - /bin/bash
+                - pg_isready -U postgres -d wikidb
+            failureThreshold: 3  
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            successThreshold: 2
+            timeoutSeconds: 5
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            tcpSocket:
+              port: 5432
+            timeoutSeconds: 1
+          resources:
+            requests:
+              cpu: 1
+              memory: 2Gi
+            limits:
+              cpu: 1
+              memory: 2Gi
+
+        - name: xpgadmin-container
+          image: dpage/pgadmin4:7.4
+          ports:
+            - containerPort: 5050
+              name: http-xpgadmin
+              protocol: TCP
+          env:
+            - name: TZ
+              value: "Europe/Moscow"
+            - name: PGADMIN_DEFAULT_EMAIL
+              value: "..."
+            - name: PGADMIN_DEFAULT_PASSWORD
+              value: "..."
+            - name: PGADMIN_CONFIG_SERVER_MODE
+              value: "False"
+          volumeMounts:
+            #- mountPath: /var/lib/pgadmin
+            - mountPath: /home/pgadmin
+              name: xpgadmin-pv
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 5050
+              scheme: HTTP
+            failureThreshold: 3
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            successThreshold: 2
+            timeoutSeconds: 5
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            tcpSocket:
+              port: 5050
+            timeoutSeconds: 1
+          resources:
+            requests:
+              cpu: 512m
+              memory: 1Gi
+            limits:
+              cpu: 512m
+              memory: 1Gi
+
+        - name: xexporter-container
+          image: bitnami/postgres-exporter:0.13.1
+          ports:
+            - containerPort: 9187
+              name: http-xpostgres
+              protocol: TCP
+          env:
+            - name: TZ
+              value: "Europe/Moscow"
+            - name: DATA_SOURCE_URI
+              value: "postgres:5432/wikidb?sslmode=disable"
+            - name: DATA_SOURCE_USER
+              value: "..."
+            - name: DATA_SOURCE_PASS
+              value: "..."
+            - name: PG_EXPORTER_EXTEND_QUERY_PATH
+              value: "/etc/postgres_exporter/queries.yaml"
+          resources:
+            requests:
+              cpu: 256m
+              memory: 512Mi
+            limits:
+              cpu: 256m
+              memory: 512Mi
+
+#        - name: xcron-container
+#          image: cron:v1
+#          env:
+#            - name: TZ
+#              value: "Europe/Moscow"
+#          volumeMounts:
+#            - mountPath: /var/lib/postgresql/backup
+#              name: xbackup-pv
+#            - mountPath: /usr/local/xwiki/data
+#              name: xwiki-pv
+#          resources:
+#            requests:
+#              cpu: 512m
+#              memory: 1Gi
+#            limits:
+#              cpu: 512m
+#              memory: 1Gi
+      
+      volumes:
+        - name: xwiki-pv
+          persistentVolumeClaim:
+            claimName: xwiki-pvc
+        - name: xpostgres-pv
+          persistentVolumeClaim:
+            claimName: xpostgres-pvc
+        - name: xbackup-pv
+          persistentVolumeClaim:
+            claimName: xbackup-pvc
+        - name: xpgadmin-pv
+          persistentVolumeClaim:
+            claimName: xpgadmin-pvc
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: xwiki
+  namespace: xwiki
+spec:
+  ports:
+    - port: 8080
+      protocol: TCP
+      targetPort: http-xwiki
+  selector:
+    app: xwiki
+  sessionAffinity: None
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: xpostgres
+  namespace: xwiki
+spec:
+  ports:
+    - port: 5432
+      protocol: TCP
+      targetPort: http-xpostgres
+  selector:
+    app: xwiki
+  sessionAffinity: None
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: xpgadmin
+  namespace: xwiki
+spec:
+  ports:
+    - port: 5050
+      protocol: TCP
+      targetPort: http-xpgadmin
+  selector:
+    app: xwiki
+  sessionAffinity: None
+  type: ClusterIP
+

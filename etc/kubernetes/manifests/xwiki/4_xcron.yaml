@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: xwiki
+  name: xcron
+  namespace: xwiki
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: xwiki
+  template:
+    metadata:
+      labels:
+        app: xwiki
+    spec:
+      containers:
+        - name: xcron-container
+          imagePullPolicy: IfNotPresent
+          #registry: docker.io
+          image: busygina83/xcron:v2
+          env:
+            - name: TZ
+              value: "Europe/Moscow"
+          volumeMounts:
+            - mountPath: /var/lib/postgresql/backup
+              name: xpgbackup-pv
+              readOnly: false
+            #- mountPath: /usr/local/xwiki/data
+            #  name: xwiki-pv
+            #  readOnly: false
+          resources:
+            requests:
+              cpu: 512m
+              memory: 1Gi
+            limits:
+              cpu: 512m
+              memory: 1Gi
+      volumes:
+        #- name: xwiki-pv
+        #  persistentVolumeClaim:
+        #    claimName: xwiki-pvc
+        - name: xpgbackup-pv
+          persistentVolumeClaim:
+            claimName: xpgbackup-pvc
+

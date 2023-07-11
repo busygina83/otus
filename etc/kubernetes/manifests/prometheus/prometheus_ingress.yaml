@@ -1,0 +1,42 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: prometheus
+  namespace: monitoring
+  #annotations:
+  #  kubernetes.io/ingress.class: nginx
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: grafana.ruby.local
+      http:
+        paths:
+          #- path: /kibana
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: grafana
+                port:
+                  number: 3000
+    - host: prometheus.ruby.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: my-prom-prometheus-server
+                port:
+                  number: 80
+    - host: promalert.ruby.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: my-prom-alertmanager
+                port:
+                  number: 9093
+

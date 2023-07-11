@@ -1,0 +1,104 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: xwiki
+  name: xwiki
+  namespace: xwiki
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: xwiki
+  template:
+    metadata:
+      labels:
+        app: xwiki
+    spec:
+      containers:
+        - name: xwiki-container
+          image: xwiki:15.5-postgres-tomcat
+          ports:
+            - containerPort: 8080
+              name: http-xwiki
+              protocol: TCP
+          env:
+            - name: TZ
+              value: "Europe/Moscow"
+            - name: DB_USER
+              value: "..."
+            - name: DB_PASSWORD
+              value: "too...ruser"
+            - name: DB_DATABASE
+              value: "..."
+            - name: DB_HOST
+              value: "xpostgres.xwiki.svc"
+            - name: DB_PORT
+              value: "5432"
+          volumeMounts:
+            - mountPath: /usr/local/xwiki
+              name: xwiki-pv
+              readOnly: false
+          #readinessProbe:
+          #  httpGet:
+          #    path: /
+          #    port: 8080
+          #    scheme: HTTP
+          #  failureThreshold: 5
+          #  initialDelaySeconds: 10
+          #  periodSeconds: 30
+          #  successThreshold: 2
+          #  timeoutSeconds: 5
+          #livenessProbe:
+          #  failureThreshold: 5
+          #  initialDelaySeconds: 30
+          #  periodSeconds: 10
+          #  successThreshold: 1
+          #  tcpSocket:
+          #    port: 8080
+          #  timeoutSeconds: 1
+          resources:
+            requests:
+              cpu: 3
+              memory: 6Gi
+            limits:
+              cpu: 3
+              memory: 6Gi
+      volumes:
+        - name: xwiki-pv
+          persistentVolumeClaim:
+            claimName: xwiki-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: xwiki
+  namespace: xwiki
+spec:
+  ports:
+    - port: 80
+      protocol: TCP
+      targetPort: 8080
+  selector:
+    app: xwiki
+  sessionAffinity: None
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: xwiki
+  namespace: xwiki
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: xwiki.ruby.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: xwiki
+                port:
+                  number: 8080
